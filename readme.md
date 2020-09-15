@@ -67,3 +67,16 @@ Policies:
 ```
 
 So we can retrieve information about all pipelines and builds.  See [template.yml](https://github.com/AndreyMarchuk/code-pipeline-slack/blob/master/template.yml) for more detail.
+
+## Deploying
+
+0. Ensure you have pipenv installed
+  * `which pipenv || pip3 install pipenv`
+1. (Optional) Save a backup of the current version
+  * AWS Console: Actions -> Export function
+  * `curl -LO "$(aws lambda get-function --function-name $LAMBDA_FUNCTION_NAME | jq -r '.Code.Location')"`
+2. Generate a package with the new version
+  * `TARGET_FOLDER=$PWD/output ZIP_FILE='code-pipeline-slack.zip' ./package.sh`
+3. Upload the new package
+  * AWS Console: Function Code -> Actions -> Upload a .zip file
+  * `aws lambda update-function-code --function-name $LAMBDA_FUNCTION_NAME --zip-file fileb://code-pipeline-slack.zip`
