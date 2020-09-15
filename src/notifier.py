@@ -91,8 +91,6 @@ def process_code_build(event):
         builder.update_build_stage_info(stage, phases, actionStates)
 
     logs = event['detail'].get('additional-information', {}).get('logs')
-    if logs:
-        builder.attach_logs(event['detail']['additional-information']['logs'])
 
     post_build_msg(builder)
 
