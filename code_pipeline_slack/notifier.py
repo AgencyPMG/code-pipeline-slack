@@ -16,20 +16,19 @@ from slack_helper import post_build_msg, find_message_for_build
 
 logger = logging.getLogger()
 
-LOGLEVEL = os.environ.get('LOGLEVEL', 'WARNING').upper()
+LOGLEVEL = os.environ.get("LOGLEVEL", "WARNING").upper()
 logging.basicConfig(level=LOGLEVEL)
 
 
-client = boto3.client('codepipeline')
+client = boto3.client("codepipeline")
 
 
 def find_revision_info(info):
     r = client.get_pipeline_execution(
-        pipelineName=info.pipeline,
-        pipelineExecutionId=info.executionId
-    )['pipelineExecution']
+        pipelineName=info.pipeline, pipelineExecutionId=info.executionId
+    )["pipelineExecution"]
 
-    revs = r.get('artifactRevisions', [])
+    revs = r.get("artifactRevisions", [])
     if len(revs) > 0:
         return revs[0]
     return None
@@ -39,18 +38,18 @@ def find_revision_info(info):
 def pipeline_from_build(code_build_info):
     r = client.get_pipeline_state(name=code_build_info.pipeline)
 
-    for s in r['stageStates']:
-        for a in s['actionStates']:
-            execution_id = a.get('latestExecution', {}).get('externalExecutionId')
+    for s in r["stageStates"]:
+        for a in s["actionStates"]:
+            execution_id = a.get("latestExecution", {}).get("externalExecutionId")
             if execution_id and code_build_info.buildId.endswith(execution_id):
-                pe = s['latestExecution']['pipelineExecutionId']
-                return s['stageName'], pe, a
+                pe = s["latestExecution"]["pipelineExecutionId"]
+                return s["stageName"], pe, a
 
     return None, None, None
 
 
 def process_code_pipeline(event):
-    if 'execution-id' not in event['detail']:
+    if "execution-id" not in event["detail"]:
         logger.debug("Skipping due to no executionId")
         return
 
@@ -67,7 +66,7 @@ def process_code_pipeline(event):
 
 
 def process_code_build(event):
-    if 'additional-information' not in event['detail']:
+    if "additional-information" not in event["detail"]:
         logger.debug("Skipping due to no additional-information")
         return
 
@@ -87,19 +86,19 @@ def process_code_build(event):
     existing_msg = find_message_for_build(build_info)
     builder = MessageBuilder(build_info, existing_msg)
 
-    if 'phases' in event['detail']['additional-information']:
-        phases = event['detail']['additional-information']['phases']
+    if "phases" in event["detail"]["additional-information"]:
+        phases = event["detail"]["additional-information"]["phases"]
         builder.update_build_stage_info(stage, phases, actionStates)
 
-    logs = event['detail'].get('additional-information', {}).get('logs')
+    logs = event["detail"].get("additional-information", {}).get("logs")
 
     post_build_msg(builder)
 
 
 def process(event):
-    if event['source'] == "aws.codepipeline":
+    if event["source"] == "aws.codepipeline":
         process_code_pipeline(event)
-    if event['source'] == "aws.codebuild":
+    if event["source"] == "aws.codebuild":
         process_code_build(event)
 
 
@@ -109,7 +108,7 @@ def run(event, context):
 
 
 if __name__ == "__main__":
-    with open('test-event.json') as f:
+    with open("test-event.json") as f:
         events = json.load(f)
         for e in events:
             run(e, {})

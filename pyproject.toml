@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "code-pipeline-slack"
+version = "0.1.0"
+description = ""
+authors = ["Cleverly AI <tech@cleverly.ai>"]
+license = "Apache 2.0"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+boto3 = "^1.17.15"
+slack_sdk = "^3.4.0"
+
+[tool.poetry.dev-dependencies]
+black = "^20.8b1"
+pytest = "^6.2.2"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

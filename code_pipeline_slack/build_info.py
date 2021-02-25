@@ -4,7 +4,7 @@ import os
 
 logger = logging.getLogger()
 
-LOGLEVEL = os.environ.get('LOGLEVEL', 'WARNING').upper()
+LOGLEVEL = os.environ.get("LOGLEVEL", "WARNING").upper()
 logging.basicConfig(level=LOGLEVEL)
 
 
@@ -17,8 +17,8 @@ class CodeBuildInfo(object):
     def from_event(event):
         logger.debug(json.dumps(event, indent=2))
         # strip off leading 'codepipeline/'
-        pipeline = event['detail']['additional-information']['initiator'][13:]
-        bid = event['detail']['build-id']
+        pipeline = event["detail"]["additional-information"]["initiator"][13:]
+        bid = event["detail"]["build-id"]
         return CodeBuildInfo(pipeline, bid)
 
 
@@ -39,15 +39,15 @@ class BuildInfo(object):
 
     @staticmethod
     def pull_phase_info(event):
-        info = event['detail']['additional-information']
-        return info.get('phases')
+        info = event["detail"]["additional-information"]
+        return info.get("phases")
 
     @staticmethod
     def from_event(event):
-        if event['source'] == "aws.codepipeline":
-            detail = event['detail']
-            return BuildInfo(detail['execution-id'], detail['pipeline'])
-        if event['source'] == "aws.codebuild":
+        if event["source"] == "aws.codepipeline":
+            detail = event["detail"]
+            return BuildInfo(detail["execution-id"], detail["pipeline"])
+        if event["source"] == "aws.codebuild":
             logger.debug(json.dumps(event, indent=2))
             ph = BuildInfo.pull_phase_info(event)
             logger.debug(json.dumps(ph, indent=2))
@@ -56,10 +56,10 @@ class BuildInfo(object):
 
     @staticmethod
     def from_message(event):
-        fields = event['attachments'][0]['fields']
+        fields = event["attachments"][0]["fields"]
 
-        execution_id = fields[0]['value']
-        status = fields[1]['value']
-        pipeline = fields[1]['title']
+        execution_id = fields[0]["value"]
+        status = fields[1]["value"]
+        pipeline = fields[1]["title"]
 
         return BuildInfo(execution_id, pipeline, status)
