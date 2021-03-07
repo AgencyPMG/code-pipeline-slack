@@ -145,6 +145,7 @@ def test_codepipeline_event(mocker):
     allow(aws_client).get_pipeline_state.and_return(pipeline_state)
 
     allow(slack_client).find_message_for_build
+    allow(slack_client).post_build_message
 
     event = get_event("event_pipeline")
     notifier = Notifier(aws_client, slack_client)
@@ -162,6 +163,7 @@ def test_codebuild_event(mocker):
     allow(aws_client).get_pipeline_state.and_return(pipeline_state)
 
     allow(slack_client).find_message_for_build
+    allow(slack_client).post_build_message
 
     event = get_event("event_codebuild")
     notifier = Notifier(aws_client, slack_client)

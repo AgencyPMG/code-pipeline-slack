@@ -25,6 +25,9 @@ class MessageBuilder:
 
             logger.debug(f"Actions {self.actions}")
         else:
+            self.actions = [
+                {"type": "button", "text": "Pipeline dashboard", "url": ""}
+            ]
             self.fields = [
                 {"title": build_info.pipeline, "value": "UNKNOWN"},
                 {"title": "Revision", "value": ""},
@@ -57,6 +60,7 @@ class MessageBuilder:
     def find_or_create_action(self, name, link):
         for a in self.actions:
             if a["text"] == name:
+                a["link"] = link
                 return a
 
         a = {"type": "button", "text": name, "url": link}
@@ -135,6 +139,12 @@ class MessageBuilder:
         return "\t".join(["%s %s" % (v, k) for (k, v) in sm.items()])
 
     def update_pipeline_event(self, event):
+        pipeline = event["detail"]["pipeline"]
+        execution_id = event["detail"]["execution-id"]
+        url = f"https://console.aws.amazon.com/codesuite/codepipeline/pipelines/{pipeline}/executions/{execution_id}/timeline?region=eu-west-1"
+
+        self.find_or_create_action("Pipeline dashboard", url)
+
         if event["detail-type"] == "CodePipeline Pipeline Execution State Change":
             self.fields[0]["value"] = event["detail"]["state"]
 
