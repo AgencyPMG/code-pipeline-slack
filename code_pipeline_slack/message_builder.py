@@ -26,7 +26,9 @@ class MessageBuilder:
             logger.debug(f"Actions {self.actions}")
         else:
             self.fields = [
-                {"title": build_info.pipeline, "value": "UNKNOWN", "short": False}
+                {"title": build_info.pipeline, "value": "UNKNOWN"},
+                {"title": "Revision", "value": ""},
+                {"title": "Stages", "value": ""},
             ]
 
     def has_field(self, name):
@@ -41,8 +43,7 @@ class MessageBuilder:
                 self.fields.append(
                     {
                         "title": "Revision",
-                        "value": f"{rev['revisionId'][:7]}: {rev['revisionSummary']}",
-                        "short": False,
+                        "value": f"{rev['revisionUrl']}\n\n{rev['revisionId'][:7]}: {rev['revisionSummary']}",
                     }
                 )
             else:
@@ -50,7 +51,6 @@ class MessageBuilder:
                     {
                         "title": "Revision",
                         "value": rev["revisionSummary"],
-                        "short": False,
                     }
                 )
 
@@ -66,22 +66,24 @@ class MessageBuilder:
     def pipeline_status(self):
         return self.fields[0]["value"]
 
-    def find_or_create_part(self, title, short=True):
+    def find_or_create_part(self, title):
         for a in self.fields:
             if a["title"] == title:
                 return a
 
-        p = {"title": title, "value": "", "short": short}
+        p = {"title": title, "value": ""}
+
         self.fields.append(p)
+
         return p
 
     def update_build_stage_info(self, name, phases, info):
         url = info.get("latestExecution", {}).get("externalExecutionUrl")
 
         if url:
-            self.find_or_create_action("Build dashboard", url)
+            self.find_or_create_action(f"{name} dashboard", url)
 
-        si = self.find_or_create_part(name, short=False)
+        si = self.find_or_create_part(name)
 
         def pi(p):
             p_status = p.get("phase-status", "IN_PROGRESS")
@@ -112,7 +114,7 @@ class MessageBuilder:
         context = [pc(p) for p in phases if pc(p)]
 
         if len(context) > 0:
-            self.find_or_create_part("Build Context", short=False)["value"] = " ".join(
+            self.find_or_create_part("Build Context")["value"] = " ".join(
                 context
             )
 
