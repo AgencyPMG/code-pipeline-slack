@@ -9,14 +9,12 @@ logging.basicConfig(level=LOGLEVEL)
 
 
 class CodeBuildInfo(object):
-    def __init__(self, pipeline, buildId):
+    def __init__(self, pipeline, build_id):
         self.pipeline = pipeline
-        self.buildId = buildId
+        self.build_id = build_id
 
     @staticmethod
     def from_event(event):
-        logger.debug(json.dumps(event, indent=2))
-        # strip off leading 'codepipeline/'
         pipeline = event["detail"]["additional-information"]["initiator"][13:]
         bid = event["detail"]["build-id"]
         return CodeBuildInfo(pipeline, bid)
@@ -24,14 +22,14 @@ class CodeBuildInfo(object):
 
 class BuildNotification(object):
     def __init__(self, build_info):
-        self.buildInfo = build_info
+        self.build_info = build_info
 
 
 class BuildInfo(object):
     def __init__(self, execution_id, pipeline, status=None):
         self.status = status
         self.revisionInfo = None
-        self.executionId = execution_id
+        self.execution_id = execution_id
         self.pipeline = pipeline
 
     def has_revision_info(self):

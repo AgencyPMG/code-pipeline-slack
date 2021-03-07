@@ -1,4 +1,7 @@
-from slack import WebClient
+from slack_sdk import WebClient
+from datetime import datetime
+from datetime import timedelta
+
 import os
 import json
 import logging
@@ -9,7 +12,7 @@ LOGLEVEL = os.environ.get("LOGLEVEL", "WARNING").upper()
 logging.basicConfig(level=LOGLEVEL)
 
 
-class SlackHelper():
+class SlackHelper:
 
     CHANNEL_CACHE = {}
     MESSAGE_CACHE = {}
@@ -25,28 +28,19 @@ class SlackHelper():
         if name in SlackHelper.CHANNEL_CACHE:
             return SlackHelper.CHANNEL_CACHE[name]
 
-        r = self.client.conversations_list(
-            exclude_archived=1, types=self.channel_type)
+        r = self.client.conversations_list(exclude_archived=1, types=self.channel_type)
 
         if "error" in r:
             logger.error(
-                "error getting channel with name '" +
-                name + "': {}".format(r["error"])
+                "error getting channel with name '" + name + "': {}".format(r["error"])
             )
         else:
             for ch in r["channels"]:
                 if ch["name"] == name:
-                    SlackHelper.CHANNEL_CACHE[name] = (
-                        ch["id"], ch["is_private"])
+                    SlackHelper.CHANNEL_CACHE[name] = (ch["id"], ch["is_private"])
                     return SlackHelper.CHANNEL_CACHE[name]
 
         return None, None
-
-    def find_message(self, ch, is_private):
-        if is_private:
-            return self.client.groups_history(channel=ch)
-        else:
-            return self.client.channels_history(channel=ch)
 
     def find_my_messages(self, ch_name, user_name=None):
         ch_id, is_private = self.find_channel(ch_name)
@@ -60,28 +54,32 @@ class SlackHelper():
 
         print("Channel id = ", ch_id)
 
-        message = self.find_message(ch_id, is_private)
+        history = self.client.conversations_history(
+            channel=ch_id, oldest=(datetime.now() - timedelta(hours=2)).timestamp()
+        )
 
-        if "error" in message:
+        if "error" in history:
             logger.error(
-                "error fetching message for channel {}: {}".format(
-                    ch_id, message["error"])
+                "error fetching history for channel {}: {}".format(
+                    ch_id, history["error"]
+                )
             )
         else:
-            for m in message["messages"]:
+            for m in history["messages"]:
                 if m.get("username") == user_name:
                     logger.debug("Found message: ", m)
                     yield m
 
-    def find_message_for_build(self, build_info):
-        cached = SlackHelper.MESSAGE_CACHE.get(build_info.executionId)
+    def find_message_for_build(self, execution_id):
+        cached = SlackHelper.MESSAGE_CACHE.get(execution_id)
+
         if cached:
             return cached
 
         for m in self.find_my_messages(self.channel_name):
             for att in self.message_attachments(m):
-                if att.get("footer") == build_info.executionId:
-                    SlackHelper.MESSAGE_CACHE[build_info.executionId] = m
+                if att.get("footer") == execution_id:
+                    SlackHelper.MESSAGE_CACHE[execution_id] = m
                     return m
 
         return None
@@ -94,29 +92,29 @@ class SlackHelper():
             for f in att["fields"]:
                 yield f
 
-    def post_build_message(self, message_builder):
+    def post_build_message(self, message, message_id, execution_id):
+        import pdb; pdb.set_trace()
+
         ch_id, is_private = self.find_channel(self.channel_name)
         logger.debug("Channel id = ", ch_id)
 
         # update existing message
-        if message_builder.messageId:
-
-            message = message_builder.message()
+        if message_id:
             logger.debug("Updating existing message")
-            r = self.update_message(ch_id, message_builder.messageId, message)
+
+            r = self.update_message(ch_id, message_id, message)
             logger.debug(json.dumps(r, indent=2))
+
             if r["ok"]:
                 r["message"]["ts"] = r["ts"]
-                SlackHelper.MESSAGE_CACHE[message_builder.buildInfo.executionId] = r["message"]
+                SlackHelper.MESSAGE_CACHE[execution_id] = r[
+                    "message"
+                ]
+
             return r
 
         logger.debug("New message")
-        r = self.send_message(ch_id, message_builder.message())
-
-        # if r['ok']:
-        # TODO: are we caching this ID?
-        # SlackHelper.MESSAGE_CACHE[msgBuilder.buildInfo.executionId] = r['ts']
-        # SlackHelper.CHANNEL_CACHE[self.channel_name] = (r['channel'], is_private)
+        r = self.send_message(ch_id, message)
 
         return r
 
@@ -127,6 +125,7 @@ class SlackHelper():
             username=self.bot_name,
             attachments=attachments,
         )
+
         return r
 
     def update_message(self, ch, ts, attachments):
@@ -137,4 +136,5 @@ class SlackHelper():
             username=self.bot_name,
             attachments=attachments,
         )
+
         return r

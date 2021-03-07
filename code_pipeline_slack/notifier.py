@@ -1,17 +1,12 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function
-import json
 import boto3
-import time
 import logging
 import os
 
-from pprint import pprint
-
-from build_info import BuildInfo, CodeBuildInfo
-from message_builder import MessageBuilder
-from slack_helper import post_build_msg, find_message_for_build
+from .build_info import BuildInfo, CodeBuildInfo
+from .message_builder import MessageBuilder
+from .slack_helper import SlackHelper
 
 
 logger = logging.getLogger()
@@ -19,97 +14,104 @@ logger = logging.getLogger()
 LOGLEVEL = os.environ.get("LOGLEVEL", "WARNING").upper()
 logging.basicConfig(level=LOGLEVEL)
 
-
-client = boto3.client("codepipeline")
-
-
-def find_revision_info(info):
-    r = client.get_pipeline_execution(
-        pipelineName=info.pipeline, pipelineExecutionId=info.executionId
-    )["pipelineExecution"]
-
-    revs = r.get("artifactRevisions", [])
-    if len(revs) > 0:
-        return revs[0]
-    return None
+SLACK_TOKEN = os.getenv("SLACK_BOT_TOKEN")
+SLACK_CHANNEL = os.getenv("SLACK_CHANNEL", "builds2")
+SLACK_CHANNEL_TYPE = os.getenv("SLACK_CHANNEL_TYPE", "public_channel")
+SLACK_BOT_NAME = os.getenv("SLACK_BOT_NAME", "BuildBot")
+SLACK_BOT_ICON = os.getenv("SLACK_BOT_ICON", ":robot_face:")
 
 
-# return (stageName, executionId, actionStateDict) if event executionId matches latest pipeline execution
-def pipeline_from_build(code_build_info):
-    r = client.get_pipeline_state(name=code_build_info.pipeline)
+class Notifier:
+    def __init__(self, aws_client, slack_client):
+        self.aws_client = aws_client
+        self.slack_client = slack_client
 
-    for s in r["stageStates"]:
-        for a in s["actionStates"]:
-            execution_id = a.get("latestExecution", {}).get("externalExecutionId")
-            if execution_id and code_build_info.buildId.endswith(execution_id):
-                pe = s["latestExecution"]["pipelineExecutionId"]
-                return s["stageName"], pe, a
+    def find_revision_info(self, info):
+        r = self.aws_client.get_pipeline_execution(
+            pipelineName=info.pipeline, pipelineExecutionId=info.execution_id
+        )["pipelineExecution"]
 
-    return None, None, None
+        revs = r.get("artifactRevisions", [])
 
+        if len(revs) > 0:
+            return revs[0]
 
-def process_code_pipeline(event):
-    if "execution-id" not in event["detail"]:
-        logger.debug("Skipping due to no executionId")
-        return
+        return None
 
-    build_info = BuildInfo.from_event(event)
-    existing_msg = find_message_for_build(build_info)
-    builder = MessageBuilder(build_info, existing_msg)
-    builder.update_pipeline_event(event)
+    def pipeline_from_build(self, code_build_info):
+        r = self.aws_client.get_pipeline_state(name=code_build_info.pipeline)
 
-    if builder.needs_revision_info():
-        revision = find_revision_info(build_info)
-        builder.attach_revision_info(revision)
+        for s in r["stageStates"]:
+            for a in s["actionStates"]:
+                execution_id = a.get("latestExecution", {}).get("externalExecutionId")
 
-    post_build_msg(builder)
+                if execution_id and code_build_info.build_id.endswith(execution_id):
+                    pe = s["latestExecution"]["pipelineExecutionId"]
+                    return s["stageName"], pe, a
 
+        return None, None, None
 
-def process_code_build(event):
-    if "additional-information" not in event["detail"]:
-        logger.debug("Skipping due to no additional-information")
-        return
+    def process_code_pipeline(self, event):
+        if "execution-id" not in event["detail"]:
+            logger.debug("Skipping due to no executionId")
+            return
 
-    cbi = CodeBuildInfo.from_event(event)
+        build_info = BuildInfo.from_event(event)
+        existing_msg = self.slack_client.find_message_for_build(
+            build_info.execution_id)
 
-    logger.debug(vars(cbi))
+        builder = MessageBuilder(build_info, existing_msg)
+        builder.update_pipeline_event(event)
 
-    (stage, pid, actionStates) = pipeline_from_build(cbi)
+        if builder.needs_revision_info():
+            revision = self.find_revision_info(build_info)
+            builder.attach_revision_info(revision)
 
-    logger.debug(stage, pid, actionStates)
+        self.slack_client.post_build_message(
+            builder.message(), builder.message_id, build_info.execution_id)
 
-    if not pid:
-        return
+    def process_code_build(self, event):
+        if "additional-information" not in event["detail"]:
+            logger.debug("Skipping due to no additional-information")
+            return
 
-    build_info = BuildInfo(pid, cbi.pipeline)
+        cbi = CodeBuildInfo.from_event(event)
 
-    existing_msg = find_message_for_build(build_info)
-    builder = MessageBuilder(build_info, existing_msg)
+        logger.debug(vars(cbi))
 
-    if "phases" in event["detail"]["additional-information"]:
-        phases = event["detail"]["additional-information"]["phases"]
-        builder.update_build_stage_info(stage, phases, actionStates)
+        (stage, pid, actionStates) = self.pipeline_from_build(cbi)
 
-    logs = event["detail"].get("additional-information", {}).get("logs")
+        logger.debug(stage, pid, actionStates)
 
-    post_build_msg(builder)
+        if not pid:
+            return
 
+        build_info = BuildInfo(pid, cbi.pipeline)
 
-def process(event):
-    if event["source"] == "aws.codepipeline":
-        process_code_pipeline(event)
-    if event["source"] == "aws.codebuild":
-        process_code_build(event)
+        existing_msg = self.slack_client.find_message_for_build(
+            build_info.execution_id)
+
+        builder = MessageBuilder(build_info, existing_msg)
+
+        if "phases" in event["detail"]["additional-information"]:
+            phases = event["detail"]["additional-information"]["phases"]
+            builder.update_build_stage_info(stage, phases, actionStates)
+
+        self.slack_client.post_build_message(
+            builder.message(), builder.message_id, build_info.execution_id)
+
+    def process(self, event):
+        if event["source"] == "aws.codepipeline":
+            self.process_code_pipeline(event)
+        if event["source"] == "aws.codebuild":
+            self.process_code_build(event)
 
 
 def run(event, context):
-    logger.debug(json.dumps(event))
-    process(event)
+    aws_client = boto3.client("codepipeline")
+    slack_client = SlackHelper(
+        SLACK_TOKEN, SLACK_CHANNEL, SLACK_CHANNEL_TYPE, SLACK_BOT_NAME, SLACK_BOT_ICON
+    )
 
-
-if __name__ == "__main__":
-    with open("test-event.json") as f:
-        events = json.load(f)
-        for e in events:
-            run(e, {})
-            time.sleep(1)
+    notifier = Notifier(aws_client, slack_client)
+    notifier.process(event)

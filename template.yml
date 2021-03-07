@@ -32,7 +32,7 @@ Resources:
   Notifier:
     Type: AWS::Serverless::Function
     Properties:
-      Runtime: python3.7
+      Runtime: python3.9
       Timeout: 30
       MemorySize: 256
       CodeUri: ./lambda.zip
@@ -41,7 +41,6 @@ Resources:
       Environment:
         Variables:
           SLACK_TOKEN: !Ref SlackOAuthAccessToken
-          SLACK_BOT_TOKEN: !Ref SlackBotUserOAuthAccessToken
           SLACK_BOT_NAME: !Ref SlackBotName
           SLACK_BOT_ICON: !Ref SlackBotIcon
           SLACK_CHANNEL: !Ref SlackChannel

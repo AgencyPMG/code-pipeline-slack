@@ -8,22 +8,25 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 
-class MessageBuilder(object):
+class MessageBuilder:
     def __init__(self, build_info, message):
-        self.buildInfo = build_info
+        self.build_info = build_info
         self.actions = []
-        self.messageId = None
+        self.message_id = None
 
         if message:
             logger.debug(json.dumps(message, indent=2))
+
             att = message["attachments"][0]
+
             self.fields = att["fields"]
             self.actions = att.get("actions", [])
-            self.messageId = message["ts"]
-            logger.debug("Actions {}".format(self.actions))
+            self.message_id = message["ts"]
+
+            logger.debug(f"Actions {self.actions}")
         else:
             self.fields = [
-                {"title": build_info.pipeline, "value": "UNKNOWN", "short": True}
+                {"title": build_info.pipeline, "value": "UNKNOWN", "short": False}
             ]
 
     def has_field(self, name):
@@ -38,12 +41,8 @@ class MessageBuilder(object):
                 self.fields.append(
                     {
                         "title": "Revision",
-                        "value": "<{}|{}: {}>".format(
-                            rev["revisionUrl"],
-                            rev["revisionId"][:7],
-                            rev["revisionSummary"],
-                        ),
-                        "short": True,
+                        "value": f"{rev['revisionId'][:7]}: {rev['revisionSummary']}",
+                        "short": False,
                     }
                 )
             else:
@@ -51,12 +50,9 @@ class MessageBuilder(object):
                     {
                         "title": "Revision",
                         "value": rev["revisionSummary"],
-                        "short": True,
+                        "short": False,
                     }
                 )
-
-    def attach_logs(self, logs):
-        self.find_or_create_action("Build Logs", logs["deep-link"])
 
     def find_or_create_action(self, name, link):
         for a in self.actions:
@@ -81,6 +77,7 @@ class MessageBuilder(object):
 
     def update_build_stage_info(self, name, phases, info):
         url = info.get("latestExecution", {}).get("externalExecutionUrl")
+
         if url:
             self.find_or_create_action("Build dashboard", url)
 
@@ -91,10 +88,12 @@ class MessageBuilder(object):
             return BUILD_PHASES[p_status]
 
         def fmt_p(p):
-            msg = "{} {}".format(pi(p), p["phase-type"])
+            msg = f"{pi(p)} {p['phase-type']}"
             d = p.get("duration-in-seconds")
+
             if d:
-                return msg + " ({})".format(d)
+                return msg + " ({d})"
+
             return msg
 
         def show_p(p):
@@ -103,9 +102,11 @@ class MessageBuilder(object):
 
         def pc(p):
             ctx = p.get("phase-context", [])
+
             if len(ctx) > 0:
                 if ctx[0] != ": ":
                     return ctx[0]
+
             return None
 
         context = [pc(p) for p in phases if pc(p)]
@@ -152,7 +153,7 @@ class MessageBuilder(object):
             {
                 "fields": self.fields,
                 "color": self.color(),
-                "footer": self.buildInfo.executionId,
+                "footer": self.build_info.execution_id,
                 "actions": self.actions,
             }
         ]
