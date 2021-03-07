@@ -36,11 +36,6 @@ def find_channel(name):
     return None, None
 
 
-def find_msg(ch, is_private):
-    method = 'groups.history' if is_private else 'channels.history'
-    return sc.api_call(method, channel=ch)
-
-
 def find_my_messages(ch_name, user_name=SLACK_BOT_NAME):
     ch_id, is_private = find_channel(ch_name)
     if not ch_id:
@@ -48,7 +43,7 @@ def find_my_messages(ch_name, user_name=SLACK_BOT_NAME):
         return
 
     print("Channel id = ", ch_id)
-    msg = find_msg(ch_id, is_private)
+    msg = sc.api_call('conversations.history', channel=ch_id)
     if 'error' in msg:
         logger.error("error fetching msg for channel {}: {}".format(ch_id, msg['error']))
     else:
