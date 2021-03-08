@@ -6,7 +6,7 @@ authors = ["Cleverly AI <tech@cleverly.ai>"]
 license = "Apache 2.0"
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.7"
 boto3 = "^1.17.15"
 slack_sdk = "^3.4.0"
 
