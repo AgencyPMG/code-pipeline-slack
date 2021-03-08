@@ -129,7 +129,7 @@ class MessageBuilder:
         sm = OrderedDict()
 
         if len(stage_info) > 0:
-            for part in stage_info.split("\t"):
+            for part in stage_info.split("\n"):
                 (icon, sg) = part.split(" ")
                 sm[sg] = icon
 
