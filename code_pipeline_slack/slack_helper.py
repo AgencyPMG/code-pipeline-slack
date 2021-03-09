@@ -93,8 +93,6 @@ class SlackHelper:
                 yield f
 
     def post_build_message(self, message, message_id, execution_id):
-        import pdb; pdb.set_trace()
-
         ch_id, is_private = self.find_channel(self.channel_name)
         logger.debug("Channel id = ", ch_id)
 
@@ -103,13 +101,10 @@ class SlackHelper:
             logger.debug("Updating existing message")
 
             r = self.update_message(ch_id, message_id, message)
-            logger.debug(json.dumps(r, indent=2))
 
             if r["ok"]:
                 r["message"]["ts"] = r["ts"]
-                SlackHelper.MESSAGE_CACHE[execution_id] = r[
-                    "message"
-                ]
+                SlackHelper.MESSAGE_CACHE[execution_id] = r["message"]
 
             return r
 
