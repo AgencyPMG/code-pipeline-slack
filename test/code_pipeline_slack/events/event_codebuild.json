@@ -28,7 +28,7 @@
             },
             "timeout-in-minutes": 60,
             "build-complete": true,
-            "initiator": "123456789012301234567-EXAMPLE",
+            "initiator": "codepipeline/01234567-EXAMPLE",
             "build-start-time": "Sep 1, 2017 4:12:29 PM",
             "source": {
                 "location": "codebuild-123456789012-input-bucket/my-input-artifact.zip",

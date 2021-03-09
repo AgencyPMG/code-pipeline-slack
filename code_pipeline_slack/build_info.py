@@ -17,6 +17,7 @@ class CodeBuildInfo(object):
     def from_event(event):
         pipeline = event["detail"]["additional-information"]["initiator"][13:]
         bid = event["detail"]["build-id"]
+
         return CodeBuildInfo(pipeline, bid)
 
 

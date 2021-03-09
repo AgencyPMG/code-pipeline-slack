@@ -25,9 +25,8 @@ class MessageBuilder:
 
             logger.debug(f"Actions {self.actions}")
         else:
-            self.actions = [
-                {"type": "button", "text": "Pipeline dashboard", "url": ""}
-            ]
+            self.actions = [{"type": "button", "text": "Pipeline dashboard", "url": ""}]
+
             self.fields = [
                 {"title": build_info.pipeline, "value": "UNKNOWN"},
                 {"title": "Revision", "value": ""},
@@ -35,27 +34,25 @@ class MessageBuilder:
             ]
 
     def has_field(self, name):
-        return len([f for f in self.fields if f["title"] == name]) > 0
+        return (
+            len([f for f in self.fields if f["title"] == name and f["value"] != ""]) > 0
+        )
 
     def needs_revision_info(self):
         return not self.has_field("Revision")
 
     def attach_revision_info(self, rev):
         if self.needs_revision_info() and rev:
+            rev_field = self.find_or_create_part("Revision")
+            rev_summary = rev["revisionSummary"]
+
             if "revisionUrl" in rev:
-                self.fields.append(
-                    {
-                        "title": "Revision",
-                        "value": f"{rev['revisionUrl']}\n\n{rev['revisionId'][:7]}: {rev['revisionSummary']}",
-                    }
-                )
+                rev_url = rev["revisionUrl"]
+                rev_id = rev["revisionId"][:7]
+
+                rev_field["value"] = f"<{rev_url}|{rev_id}>\n\n{rev_summary}"
             else:
-                self.fields.append(
-                    {
-                        "title": "Revision",
-                        "value": rev["revisionSummary"],
-                    }
-                )
+                rev_field["value"] = rev_summary
 
     def find_or_create_action(self, name, link):
         for a in self.actions:
@@ -98,7 +95,7 @@ class MessageBuilder:
             d = p.get("duration-in-seconds")
 
             if d:
-                return msg + " ({d})"
+                return msg + f" ({d})"
 
             return msg
 
@@ -118,9 +115,7 @@ class MessageBuilder:
         context = [pc(p) for p in phases if pc(p)]
 
         if len(context) > 0:
-            self.find_or_create_part("Build Context")["value"] = " ".join(
-                context
-            )
+            self.find_or_create_part("Build Context")["value"] = " ".join(context)
 
         pp = [fmt_p(p) for p in phases if show_p(p)]
         si["value"] = "\n".join(pp)
@@ -129,14 +124,14 @@ class MessageBuilder:
         sm = OrderedDict()
 
         if len(stage_info) > 0:
-            for part in stage_info.split("\n"):
+            for part in stage_info.split("\t"):
                 (icon, sg) = part.split(" ")
                 sm[sg] = icon
 
         icon = STATE_ICONS[status]
         sm[stage] = icon
 
-        return "\t".join(["%s %s" % (v, k) for (k, v) in sm.items()])
+        return "\t".join([f"{v} {k}" for (k, v) in sm.items()])
 
     def update_pipeline_event(self, event):
         pipeline = event["detail"]["pipeline"]
