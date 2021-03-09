@@ -9,7 +9,7 @@ ZIP_FILE=./lambda.zip
 echo "Installing dependencies into ${TARGET_DIRECTORY} ... "
 poetry run pip install -r <(poetry export -f requirements.txt) --target "${TARGET_DIRECTORY}"
 
-find ./code_pipeline_slack -type f -iname "*.py" -print0 | xargs -0 -I{} cp {} "${TARGET_DIRECTORY}"
+cp -R ./code_pipeline_slack "${TARGET_DIRECTORY}"
 
 [ -f "${ZIP_FILE}" ] && rm -f "${ZIP_FILE}"
 

@@ -13,8 +13,8 @@ Parameters:
     Default: builds
   SlackChannelType:
     Type: String
-    Default: "public"
-    AllowedValues: ["public", "private"]
+    Default: "public_channel"
+    AllowedValues: ["public_channel", "private_channel"]
   SlackBotName:
     MinLength: 1
     Type: String
@@ -32,7 +32,7 @@ Resources:
       Timeout: 30
       MemorySize: 256
       CodeUri: ./lambda.zip
-      Handler: notifier.run
+      Handler: code_pipeline_slack.notifier.run
       ReservedConcurrentExecutions: 1
       Environment:
         Variables:
