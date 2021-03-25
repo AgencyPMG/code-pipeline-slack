@@ -1,8 +1,8 @@
 #!/bin/bash -eu
 # install dependendies into target folder and create lambda zip package
 
-PROJECT_NAME=code-pipeline-slack-dev
-S3_BUCKET="cleverly-cloudformation-artifacts-zai5koow"
+PROJECT_NAME=code-pipeline-slack
+S3_BUCKET="cleverly-cloudformation-artifacts-${BUCKET_KEY}"
 TARGET_DIRECTORY=./target
 ZIP_FILE=./lambda.zip
 
