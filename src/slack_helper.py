@@ -24,14 +24,26 @@ def find_channel(name):
 
     channel_type = 'private_channel' if SLACK_CHANNEL_TYPE.upper() == 'PRIVATE' else 'public_channel'
 
-    r = sc_bot.api_call("conversations.list", exclude_archived=1, types=channel_type)
-    if 'error' in r:
-        logger.error("error getting channel with name '" + name + "': {}".format(r['error']))
-    else:
-        for ch in r['channels']:
-            if ch['name'] == name:
-                CHANNEL_CACHE[name] = (ch['id'], ch['is_private'])
-                return CHANNEL_CACHE[name]
+    loop = True
+    cursor = None
+    channels = []
+    while loop:
+        r = sc_bot.api_call("conversations.list", exclude_archived=1, types=channel_type, cursor=cursor)
+        if 'error' in r:
+            logger.error("error getting channel with name '" + name + "': {}".format(r['error']))
+            loop = False
+        else:
+            channels = channels + r['channels']
+
+        if not r['response_metadata']['next_cursor']:
+            loop = False
+        else:
+            cursor = r['response_metadata']['next_cursor']
+
+    for ch in channels:
+        if ch['name'] == name:
+            CHANNEL_CACHE[name] = (ch['id'], ch['is_private'])
+            return CHANNEL_CACHE[name]
 
     return None, None
 
